@@ -1,0 +1,419 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Realtime Voice Assistant • Enhanced</title>
+  <style>
+    :root{
+      --bg: #0b0f16;
+      --card: rgba(255,255,255,0.06);
+      --card-2: rgba(255,255,255,0.08);
+      --text: #e8eefc;
+      --muted: #9fb2d0;
+      --brand: #6ea8fe;
+      --brand-2: #a16bff;
+      --ok: #22c55e;
+      --danger: #ef4444;
+      --warn: #f59e0b;
+      --shadow: 0 10px 30px rgba(0,0,0,.35), inset 0 0 0 1px rgba(255,255,255,.06);
+      --radius: 18px;
+    }
+    @media (prefers-color-scheme: light) {
+      :root{
+        --bg: #f5f7fb;
+        --card: rgba(0,0,0,0.04);
+        --card-2: rgba(0,0,0,0.06);
+        --text: #0b1220;
+        --muted: #48566a;
+        --shadow: 0 8px 26px rgba(0,0,0,.08), inset 0 0 0 1px rgba(0,0,0,.05);
+      }
+    }
+    *{ box-sizing: border-box }
+    html,body{ height:100% }
+    body{ margin:0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Helvetica Neue, Arial, "Apple Color Emoji", "Segoe UI Emoji"; color:var(--text); background: radial-gradient(1200px 900px at 10% 10%, rgba(110,168,254,.15), transparent 40%), radial-gradient(1000px 700px at 90% 20%, rgba(161,107,255,.16), transparent 45%), var(--bg); }
+
+    /* Layout */
+    .wrap{ max-width: 1100px; margin: 24px auto; padding: 0 20px; }
+    .header{ display:flex; gap:16px; align-items:center; justify-content:space-between; margin-bottom:16px; }
+    .brand{ display:flex; align-items:center; gap:12px; }
+    .logo{ width:42px; height:42px; border-radius:12px; background: linear-gradient(135deg, var(--brand), var(--brand-2)); box-shadow: var(--shadow); display:grid; place-items:center; }
+    .logo svg{ filter: drop-shadow(0 3px 10px rgba(0,0,0,.25)); }
+    .title{ font-weight:700; font-size:22px; letter-spacing:.2px; }
+    .subtitle{ color:var(--muted); font-size:13px }
+
+    .grid{ display:grid; grid-template-columns: 430px 1fr; gap:20px; }
+    @media (max-width: 960px){ .grid{ grid-template-columns: 1fr } }
+
+    .card{ background: var(--card); backdrop-filter: blur(14px); border-radius: var(--radius); box-shadow: var(--shadow); position: relative; overflow: clip; }
+    .card-header{ padding: 16px 18px; border-bottom: 1px solid rgba(255,255,255,.06); display:flex; align-items:center; justify-content:space-between }
+    .card-body{ padding: 18px }
+
+    /* Controls */
+    .field{ display:flex; flex-direction:column; gap:8px; margin-bottom:14px }
+    .label{ font-size:13px; color:var(--muted) }
+    .input, .select, .textarea{ width:100%; padding:12px 14px; border-radius:12px; border:1px solid rgba(255,255,255,.08); background:var(--card-2); color:var(--text); outline:none; font-family: inherit; font-size: 14px; }
+    .textarea{ min-height: 100px; resize: vertical; }
+    .row{ display:flex; gap:10px }
+
+    .btn{ appearance:none; border:none; border-radius: 12px; padding: 12px 16px; color:white; cursor:pointer; font-weight:600; box-shadow: var(--shadow); transition: transform .08s ease, filter .2s ease, opacity .2s ease }
+    .btn:active{ transform: translateY(1px) }
+    .btn-primary{ background: linear-gradient(135deg, var(--brand), var(--brand-2)); }
+    .btn-dark{ background: rgba(255,255,255,.12) }
+    .btn-ghost{ background: transparent; border:1px solid rgba(255,255,255,.12); color: var(--muted) }
+    .btn-danger{ background: linear-gradient(135deg, #ff6b6b, #ef4444) }
+    .btn-success{ background: linear-gradient(135deg, #22c55e, #16a34a) }
+
+    /* Mic button (pulse) */
+    .mic-wrap{ display:grid; place-items:center; padding: 24px 0; }
+    .mic{ width:110px; height:110px; border-radius: 30px; display:grid; place-items:center; position:relative; background: radial-gradient(60% 60% at 50% 40%, rgba(255,255,255,.2), rgba(255,255,255,.06)); border: 1px solid rgba(255,255,255,.14); cursor:pointer; transition: transform .15s ease }
+    .mic:hover{ transform: translateY(-1px) }
+    .ring{ position:absolute; inset: -12px; border-radius: 36px; box-shadow: 0 0 0 0 rgba(110,168,254,.5); animation: pulse 2s infinite; pointer-events:none }
+    .mic.active .ring{ animation: pulseFast 1.2s infinite }
+    .mic svg{ width:44px; height:44px; }
+    @keyframes pulse{
+      0%{ box-shadow: 0 0 0 0 rgba(110,168,254,.45) }
+      70%{ box-shadow: 0 0 0 24px rgba(110,168,254,0) }
+      100%{ box-shadow: 0 0 0 0 rgba(110,168,254,0) }
+    }
+    @keyframes pulseFast{
+      0%{ box-shadow: 0 0 0 0 rgba(161,107,255,.55) }
+      70%{ box-shadow: 0 0 0 22px rgba(161,107,255,0) }
+      100%{ box-shadow: 0 0 0 0 rgba(161,107,255,0) }
+    }
+
+    /* Status & waveform */
+    .status{ display:flex; align-items:center; gap:10px; margin-top: 10px; color:var(--muted); font-size:14px }
+    .dot{ width:10px; height:10px; border-radius:50%; background: var(--warn) }
+    .dot.ok{ background: var(--ok) }
+    .dot.err{ background: var(--danger) }
+
+    .wave{ height:56px; width:100%; border-radius:12px; background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.03)); border:1px solid rgba(255,255,255,.1); overflow:hidden; position:relative }
+    canvas{ position:absolute; inset:0; width:100%; height:100% }
+
+    /* Chat */
+    .chat{ max-height: 520px; overflow: auto; display:flex; flex-direction:column; gap:10px; padding: 12px }
+    .msg{ display:flex; gap:10px; align-items:flex-start; animation: fadeInUp .35s ease both }
+    .bubble{ max-width: 75%; padding: 12px 14px; border-radius: 14px; line-height:1.45; box-shadow: var(--shadow) }
+    .user .bubble{ margin-left:auto; border-bottom-right-radius: 6px; background: linear-gradient(135deg, rgba(110,168,254,.25), rgba(161,107,255,.25)); border:1px solid rgba(255,255,255,.18) }
+    .ai .bubble{ border-bottom-left-radius: 6px; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.14) }
+    .msg small{ color: var(--muted); display:block; margin-top:6px; font-size: 12px }
+    @keyframes fadeInUp{ from{ opacity:0; transform: translateY(8px) } to{ opacity:1; transform:none } }
+
+    /* Toast */
+    .toast{ position: fixed; top:18px; right:18px; padding: 12px 14px; background: rgba(0,0,0,.7); color:white; border-radius:12px; opacity:0; transform: translateY(-6px); pointer-events:none }
+    .toast.show{ opacity:1; transform:none; transition: all .25s ease }
+
+    .footer-note{ color:var(--muted); font-size:12px; margin-top: 10px }
+    .kbd{ font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; background: rgba(255,255,255,.12); padding:2px 6px; border-radius:6px; border:1px solid rgba(255,255,255,.18) }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="header">
+      <div class="brand">
+        <div class="logo" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.8">
+            <path d="M12 2v4" />
+            <path d="M12 18v4" />
+            <path d="M2 12h4" />
+            <path d="M18 12h4" />
+            <rect x="7" y="6" width="10" height="12" rx="5" />
+          </svg>
+        </div>
+        <div>
+          <div class="title">Realtime Voice Assistant</div>
+          <div class="subtitle">Enhanced · API Key & Instructions</div>
+        </div>
+      </div>
+      <div>
+        <button id="btn-theme" class="btn btn-dark" title="Toggle theme">🌓 Theme</button>
+      </div>
+    </div>
+
+    <div class="grid">
+      <!-- Left: Controls -->
+      <section class="card">
+        <div class="card-header">
+          <strong>Connection</strong>
+          <span class="subtitle">Configure your API settings</span>
+        </div>
+        <div class="card-body">
+          <div class="field">
+            <label class="label">OpenAI API Key <span class="subtitle">(starts with sk-...)</span></label>
+            <input id="apiKey" class="input" type="password" placeholder="sk-..." />
+          </div>
+          
+          <div class="field">
+            <label class="label">System Instructions <span class="subtitle">(optional prompt for the assistant)</span></label>
+            <textarea id="instructions" class="textarea" placeholder="You are a helpful voice assistant..."></textarea>
+          </div>
+
+          <div class="row">
+            <div class="field" style="flex:1">
+              <label class="label">Model</label>
+              <select id="model" class="select">
+                <option value="gpt-4o-realtime-preview-2024-12-17">gpt-4o-realtime-preview</option>
+                <option value="gpt-4o-realtime-preview">gpt-4o-realtime-preview (latest)</option>
+              </select>
+            </div>
+            <div class="field" style="flex:1">
+              <label class="label">Voice</label>
+              <select id="voice" class="select">
+                <option value="verse">verse</option>
+                <option value="alloy">alloy</option>
+                <option value="echo">echo</option>
+                <option value="shimmer">shimmer</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="mic-wrap">
+            <button id="btn-mic" class="mic" title="Start / Stop">
+              <div class="ring"></div>
+              <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 1a4 4 0 0 0-4 4v7a4 4 0 0 0 8 0V5a4 4 0 0 0-4-4Z"></path>
+                <path d="M19 10v1a7 7 0 0 1-14 0v-1"></path>
+                <path d="M12 19v4"></path>
+              </svg>
+            </button>
+            <div class="status"><span id="status-dot" class="dot"></span><span id="status-text">Idle</span></div>
+          </div>
+
+          <div class="row" style="justify-content:space-between; gap:12px">
+            <button id="btn-mute" class="btn btn-dark" disabled>🔇 Mute</button>
+            <button id="btn-stop" class="btn btn-danger">⏹ Stop</button>
+            <button id="btn-clear" class="btn btn-ghost">🧹 Clear</button>
+          </div>
+
+          <div style="margin-top:16px">
+            <div class="label" style="margin-bottom:8px">Live input level</div>
+            <div class="wave"><canvas id="wave"></canvas></div>
+          </div>
+
+          <p class="footer-note">⚠️ Your API key is used directly from the browser. Never share this page with your key entered. For production, use a server-side proxy to generate ephemeral session tokens.</p>
+        </div>
+      </section>
+
+      <!-- Right: Chat -->
+      <section class="card" style="min-height: 560px">
+        <div class="card-header">
+          <strong>Conversation</strong>
+          <div class="row" style="gap:8px">
+            <input id="quick" class="input" placeholder="Type and press ▶ to send a message" style="width:360px" />
+            <button id="btn-send" class="btn btn-primary">▶ Send</button>
+          </div>
+        </div>
+        <div id="chat" class="chat"></div>
+      </section>
+    </div>
+  </div>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    // --- Utilities ---
+    const $ = (sel) => document.querySelector(sel);
+    const statusDot = $('#status-dot');
+    const statusText = $('#status-text');
+    const toast = $('#toast');
+    const chat = $('#chat');
+    const micBtn = $('#btn-mic'); const muteBtn = $('#btn-mute'); const stopBtn = $('#btn-stop'); const clearBtn = $('#btn-clear');
+    const sendBtn = $('#btn-send');
+    const quick = $('#quick');
+
+    function setStatus(text, state){
+      statusText.textContent = text;
+      statusDot.className = 'dot' + (state ? ' ' + state : '');
+    }
+    function showToast(text){
+      toast.textContent = text; toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 1600);
+    }
+    function addMsg(role, text){
+      const el = document.createElement('div');
+      el.className = `msg ${role}`;
+      const bubble = document.createElement('div'); bubble.className = 'bubble'; bubble.innerHTML = text.replace(/\n/g,'<br>');
+      el.appendChild(bubble);
+      const ts = document.createElement('small'); ts.textContent = new Date().toLocaleTimeString(); el.appendChild(ts);
+      chat.appendChild(el); chat.scrollTo({ top: chat.scrollHeight, behavior: 'smooth' });
+    }
+
+    // Theme toggle
+    $('#btn-theme').addEventListener('click', () => {
+      const isDark = getComputedStyle(document.documentElement).getPropertyValue('--bg') === '#0b0f16';
+      document.documentElement.classList.toggle('light');
+      showToast('Theme toggled');
+    });
+
+    // --- WebRTC + Audio ---
+    let pc, micStream, remoteAudio, analyser, raf, dataChannel;
+    const canvas = $('#wave');
+    const ctx = canvas.getContext('2d');
+
+    function drawWave(){
+      if(!analyser) return;
+      const arr = new Uint8Array(analyser.fftSize);
+      analyser.getByteTimeDomainData(arr);
+      const { width, height } = canvas.getBoundingClientRect();
+      if(canvas.width !== width) canvas.width = width; if(canvas.height !== height) canvas.height = height;
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      ctx.lineWidth = 2; ctx.globalAlpha = .95;
+      ctx.beginPath();
+      for(let i=0;i<arr.length;i++){
+        const x = (i/arr.length) * canvas.width;
+        const y = (arr[i]/255) * canvas.height;
+        (i===0) ? ctx.moveTo(x,y) : ctx.lineTo(x,y);
+      }
+      ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.stroke();
+      raf = requestAnimationFrame(drawWave);
+    }
+
+    async function start(){
+      const apiKey = $('#apiKey').value.trim();
+      if(!apiKey){ showToast('Enter your OpenAI API key'); return; }
+      if(!apiKey.startsWith('sk-')){ showToast('API key should start with sk-'); return; }
+      
+      const model = $('#model').value;
+      const voice = $('#voice').value;
+      const instructions = $('#instructions').value.trim();
+
+      try{
+        setStatus('Creating session…');
+        
+        // First, create an ephemeral token using the API key
+        const sessionResp = await fetch('https://api.openai.com/v1/realtime/sessions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            model: model,
+            voice: voice,
+            ...(instructions && { instructions: instructions })
+          })
+        });
+
+        if(!sessionResp.ok){
+          const error = await sessionResp.text();
+          throw new Error(`Session creation failed: ${error}`);
+        }
+
+        const sessionData = await sessionResp.json();
+        const ephemeralKey = sessionData.client_secret?.value;
+        
+        if(!ephemeralKey){
+          throw new Error('No ephemeral key received from session API');
+        }
+
+        setStatus('Requesting mic access…');
+        micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        setStatus('Connecting…');
+
+        pc = new RTCPeerConnection();
+        micStream.getTracks().forEach(t => pc.addTrack(t, micStream));
+
+        remoteAudio = new Audio(); remoteAudio.autoplay = true;
+        pc.ontrack = e => { remoteAudio.srcObject = e.streams[0]; };
+
+        // Optional data channel for hints/messages
+        dataChannel = pc.createDataChannel('oai-events');
+        dataChannel.onopen = () => console.log('data channel open');
+        dataChannel.onmessage = (ev) => {
+          try {
+            const data = JSON.parse(ev.data);
+            if(data.type === 'response.done' || data.type === 'response.text.done'){
+              // Handle response completion if needed
+            }
+          } catch(e) {
+            console.log('Data channel message:', ev.data);
+          }
+        };
+
+        // Audio visualizer
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const src = audioCtx.createMediaStreamSource(micStream);
+        analyser = audioCtx.createAnalyser(); analyser.fftSize = 1024; src.connect(analyser); drawWave();
+
+        // SDP Offer
+        const offer = await pc.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: false });
+        await pc.setLocalDescription(offer);
+
+        const resp = await fetch(`https://api.openai.com/v1/realtime?model=${encodeURIComponent(model)}`,
+          { 
+            method: 'POST', 
+            body: offer.sdp, 
+            headers: { 
+              'Authorization': `Bearer ${ephemeralKey}`, 
+              'Content-Type': 'application/sdp'
+            } 
+          });
+        
+        if(!resp.ok){
+          throw new Error(`WebRTC connection failed: ${resp.status}`);
+        }
+
+        const ans = { type: 'answer', sdp: await resp.text() };
+        await pc.setRemoteDescription(ans);
+
+        setStatus('Live', 'ok');
+        micBtn.classList.add('active'); muteBtn.disabled = false;
+        addMsg('ai', '🎧 <strong>Connected.</strong> Start speaking!');
+      }catch(err){
+        console.error(err); 
+        setStatus('Error', 'err'); 
+        showToast(err.message || 'Connection failed');
+        stopAll();
+      }
+    }
+
+    function stopAll(){
+      if(raf) cancelAnimationFrame(raf);
+      if(analyser) analyser.disconnect(); analyser = null;
+      if(micStream){ micStream.getTracks().forEach(t => t.stop()); micStream = null; }
+      if(pc){ pc.close(); pc = null; }
+      if(remoteAudio){ remoteAudio.pause(); remoteAudio.srcObject = null; remoteAudio = null; }
+      micBtn.classList.remove('active'); muteBtn.disabled = true; muteBtn.textContent = '🔇 Mute';
+      setStatus('Idle');
+    }
+
+    // Controls
+    micBtn.addEventListener('click', () => { pc ? stopAll() : start(); });
+    stopBtn.addEventListener('click', stopAll);
+    clearBtn.addEventListener('click', () => { chat.innerHTML = ''; showToast('Cleared'); });
+
+    let muted = false;
+    muteBtn.addEventListener('click', () => {
+      if(!micStream) return;
+      muted = !muted; micStream.getTracks().forEach(t => t.enabled = !muted);
+      muteBtn.textContent = muted ? '🔈 Unmute' : '🔇 Mute';
+      showToast(muted ? 'Microphone muted' : 'Microphone unmuted');
+    });
+
+    // Quick text hint to the model
+    sendBtn.addEventListener('click', () => {
+      const text = quick.value.trim(); if(!text) return;
+      addMsg('user', text);
+      try{
+        if(dataChannel && dataChannel.readyState === 'open'){
+          dataChannel.send(JSON.stringify({ 
+            type: 'conversation.item.create',
+            item: {
+              type: 'message',
+              role: 'user',
+              content: [{ type: 'input_text', text: text }]
+            }
+          }));
+        }
+      }catch(e){
+        console.error('Failed to send message:', e);
+      }
+      quick.value = '';
+    });
+
+    // Demo seed messages
+    addMsg('ai', '👋 Hi! Enter your OpenAI API key and click the mic to start.');
+  </script>
+</body>
+</html>
